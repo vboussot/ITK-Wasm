@@ -105,6 +105,14 @@ public:
     int padding = 1;
     pipeline.add_option("-p,--padding", padding, "Pixels of padding added per side (default 1 for linear interpolation)");
 
+    std::vector<unsigned int> latticeCount;
+    pipeline
+      .add_option("-l,--lattice-count",
+                  latticeCount,
+                  "Intervals per axis of a lattice laid over the fixed grid, interior included, whose points are "
+                  "mapped instead of the boundary pixels of a non-linear transform")
+      ->type_size(Dimension);
+
     ITK_WASM_PARSE(pipeline);
 
     // Read the transform generically into the abstract itk::Transform base, from the wasm memory store under
@@ -114,7 +122,7 @@ public:
 
     ResampleBoundingBoxComputer<TransformType> computer;
     ResampleBoundingBoxResult                  result;
-    ITK_WASM_CATCH_EXCEPTION(pipeline, computer.Compute(fixed.Get(), moving.Get(), transform, padding, result));
+    ITK_WASM_CATCH_EXCEPTION(pipeline, computer.Compute(fixed.Get(), moving.Get(), transform, padding, result, latticeCount));
 
     // Map the computer's flat result vectors into the nested output schema and serialize with glaze. glaze
     // emits members in declaration order, so the object key order matches the schema above. Numbers use the

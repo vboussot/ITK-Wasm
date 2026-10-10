@@ -80,12 +80,19 @@ public:
   using ImageType = itk::Image<uint8_t, Dimension>;
   using PointType = typename TTransform::InputPointType;
 
+  /**
+   * \param latticeCount Intervals per axis of a lattice laid over the fixed grid, boundary and interior alike,
+   *   whose points are mapped instead of the boundary pixels. Empty: the boundary walk. A lattice sees a fold or a
+   *   bump strictly inside the grid that the boundary cannot; the caller widens its box by the interpolation
+   *   error between lattice points.
+   */
   void
-  Compute(const ImageType *           fixedImage,
-          const ImageType *           movingImage,
-          const TTransform *          transform,
-          int                         padding,
-          ResampleBoundingBoxResult & result)
+  Compute(const ImageType *                 fixedImage,
+          const ImageType *                 movingImage,
+          const TTransform *                transform,
+          int                               padding,
+          ResampleBoundingBoxResult &       result,
+          const std::vector<unsigned int> & latticeCount = {})
   {
     using RegionType = typename ImageType::RegionType;
     using IndexType = typename ImageType::IndexType;
@@ -138,6 +145,9 @@ public:
     const bool linear = transform->IsLinear();
     result.usedLinearCornerPath = linear;
 
+    const bool lattice = !linear && latticeCount.size() == Dimension &&
+                         std::all_of(latticeCount.begin(), latticeCount.end(), [](unsigned int n) { return n > 0; });
+
     if (linear)
     {
       // Enumerate the 2^Dimension corners with a bitmask: bit d selects the low (0) or high (size_d - 1) index
@@ -155,6 +165,46 @@ public:
         PointType physicalPoint;
         fixedImage->TransformIndexToPhysicalPoint(index, physicalPoint);
         m_BoundaryPoints.push_back(physicalPoint);
+      }
+    }
+    else if (lattice)
+    {
+      // Enumerate the (count_d + 1) lattice points per axis, the first and last on the grid's faces, and store
+      // their physical locations: an odometer over the lattice indices, each mapped to a continuous image index.
+      using ContinuousIndexType = itk::ContinuousIndex<double, Dimension>;
+      std::size_t total = 1;
+      for (unsigned int d = 0; d < Dimension; ++d)
+      {
+        total *= latticeCount[d] + 1;
+      }
+      m_BoundaryPoints.reserve(total);
+      std::vector<unsigned int> at(Dimension, 0);
+      while (true)
+      {
+        ContinuousIndexType continuousIndex;
+        for (unsigned int d = 0; d < Dimension; ++d)
+        {
+          const double span = static_cast<double>(size[d]) - 1.0;
+          continuousIndex[d] = static_cast<double>(startIndex[d]) +
+                               span * static_cast<double>(at[d]) / static_cast<double>(latticeCount[d]);
+        }
+        PointType physicalPoint;
+        fixedImage->TransformContinuousIndexToPhysicalPoint(continuousIndex, physicalPoint);
+        m_BoundaryPoints.push_back(physicalPoint);
+
+        unsigned int d = 0;
+        for (; d < Dimension; ++d)
+        {
+          if (++at[d] <= latticeCount[d])
+          {
+            break;
+          }
+          at[d] = 0;
+        }
+        if (d == Dimension)
+        {
+          break;
+        }
       }
     }
     else

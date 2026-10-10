@@ -357,6 +357,15 @@ test2DNonlinearBoundary()
   checkTrue(!result.usedLinearCornerPath, "nonlinear transform takes the full-boundary path");
   checkTrue(result.numberOfBoundaryPoints == 56, "nonlinear transform samples all 56 boundary pixels (not 4)");
 
+  const double cornersOnlyMaxXForLattice = 19.0;
+  // A lattice of 4 intervals per axis maps its 25 points, the faces among them, and bounds the same bulge.
+  ResampleBoundingBoxResult latticeResult;
+  computer.Compute(fixed, moving, transform, 1, latticeResult, std::vector<unsigned int>{ 4, 4 });
+  checkTrue(latticeResult.numberOfBoundaryPoints == 25, "a 4x4 lattice maps 25 points, interior included");
+  checkTrue(latticeResult.cornersMax[0] <= result.cornersMax[0] + 1e-9 &&
+              latticeResult.cornersMax[0] > cornersOnlyMaxXForLattice,
+            "the lattice sees the bulge the corners miss");
+
   // The +x extreme comes from the middle of the right edge, well beyond the transformed corners' x = 19: proof the
   // interior boundary pixels -- not just the corners -- drive the bound for a nonlinear transform.
   const double cornersOnlyMaxX = 19.0; // all four corners map to themselves (bump vanishes at the y extremes)
