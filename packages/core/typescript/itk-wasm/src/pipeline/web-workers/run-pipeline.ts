@@ -18,7 +18,7 @@ import meshTransferables from '../internal/mesh-transferables.js'
 import polyDataTransferables from '../internal/poly-data-transferables.js'
 
 async function runPipeline (pipelineModule: PipelineEmscriptenModule, args: string[], outputs: PipelineOutput[] | null, inputs: PipelineInput[] | null): Promise<RunPipelineResult> {
-  const result = runPipelineEmscripten(pipelineModule, args, outputs, inputs)
+  const result = await runPipelineEmscripten(pipelineModule, args, outputs, inputs)
 
   const transferables: Array<ArrayBuffer | TypedArray | null> = []
   result.outputs.forEach(function (output) {

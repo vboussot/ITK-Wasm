@@ -67,7 +67,7 @@ async function runPipelineNode (
   if (typeof mountDirs !== 'undefined') {
     args = replaceArgumentsWithEmscriptenPaths(args, mountDirs)
   }
-  const result = runPipelineEmscripten(Module, args, outputs, inputs)
+  const result = await runPipelineEmscripten(Module, args, outputs, inputs)
   if (typeof mountDirs !== 'undefined') {
     unmountable.forEach((dir) => {
       Module.unmountDir(dir)

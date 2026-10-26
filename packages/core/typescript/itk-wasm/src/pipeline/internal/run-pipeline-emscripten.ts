@@ -138,12 +138,18 @@ function getPipelineModuleOutputJSON (
   return dataObject
 }
 
-function runPipelineEmscripten (
+// The runs of a module built with JSPI that are suspended: the module's stack and outputs are theirs until they settle.
+const suspended = new WeakMap<PipelineEmscriptenModule, Promise<number>>()
+
+async function runPipelineEmscripten (
   pipelineModule: PipelineEmscriptenModule,
   args: string[],
   outputs: PipelineOutput[] | null,
   inputs: PipelineInput[] | null
-): RunPipelineResult {
+): Promise<RunPipelineResult> {
+  while (suspended.has(pipelineModule)) {
+    await suspended.get(pipelineModule)?.catch(() => {})
+  }
   if (!(inputs == null) && inputs.length > 0) {
     inputs.forEach(function (input, index) {
       switch (input.type) {
@@ -442,7 +448,14 @@ function runPipelineEmscripten (
   const stackPtr = pipelineModule.stackSave()
   let returnValue = 0
   try {
-    returnValue = pipelineModule.callMain(args.slice())
+    const result = pipelineModule.callMain(args.slice())
+    if (result instanceof Promise) {
+      // A main built with JSPI returns a promise while it is suspended
+      suspended.set(pipelineModule, result)
+      returnValue = await result.finally(() => suspended.delete(pipelineModule))
+    } else {
+      returnValue = result
+    }
   } catch (exception) {
     // Note: Module must be built with CMAKE_BUILD_TYPE set to Debug.
     // e.g.: itk-wasm build my/project -- -DCMAKE_BUILD_TYPE:STRING=Debug

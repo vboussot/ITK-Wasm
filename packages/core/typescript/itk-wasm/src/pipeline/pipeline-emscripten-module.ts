@@ -5,7 +5,7 @@
 import EmscriptenModule from './itk-wasm-emscripten-module.js'
 
 interface PipelineEmscriptenModule extends EmscriptenModule {
-  callMain: (args: string[]) => number
+  callMain: (args: string[]) => number | Promise<number>
   // var c_javascript_add = Module.cwrap('c_add', // name of C function
   // 'number', // return type
   // ['number', 'number']); // argument types

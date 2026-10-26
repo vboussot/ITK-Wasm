@@ -99,7 +99,7 @@ async function runPipeline (
       options?.pipelineBaseUrl,
       options?.pipelineQueryParams ?? defaultPipelinesQueryParams()
     )
-    const result = runPipelineEmscripten(pipelineModule, args, outputs, inputs)
+    const result = await runPipelineEmscripten(pipelineModule, args, outputs, inputs)
     return result
   }
   let worker = webWorker
